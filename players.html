@@ -1,0 +1,77 @@
+
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>مشغل قنوات M3U</title>
+<style>
+  body { font-family: Arial, sans-serif; direction: rtl; padding: 20px; }
+  button { margin: 5px; padding: 10px 15px; cursor: pointer; }
+  #player { width: 100%; max-width: 640px; height: 360px; margin-top: 20px; background: #000; }
+  #channels { margin-top: 15px; }
+</style>
+</head>
+<body>
+
+<h2>اختر قناة لتشغيلها</h2>
+
+<input type="file" id="fileInput" accept=".m3u" />
+<div id="channels"></div>
+
+<video id="player" controls></video>
+
+<script>
+  const fileInput = document.getElementById('fileInput');
+  const channelsDiv = document.getElementById('channels');
+  const player = document.getElementById('player');
+
+  fileInput.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = () => {
+      parseM3U(reader.result);
+    };
+    reader.readAsText(file, 'UTF-8');
+  });
+
+  function parseM3U(text) {
+    channelsDiv.innerHTML = '';
+    player.src = '';
+    const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+    const channels = [];
+    let currentTitle = '';
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.startsWith('#EXTINF')) {
+        // مثال: #EXTINF:-1 tvg-id="ChannelID" tvg-name="التلفاز" tvg-logo="url",اسم القناة
+        const titleMatch = line.match(/,(.+)$/);
+        currentTitle = titleMatch ? titleMatch[1].trim() : 'قناة غير معروفة';
+      } else if (!line.startsWith('#')) {
+        channels.push({ title: currentTitle, url: line.trim() });
+      }
+    }
+
+    if (channels.length === 0) {
+      channelsDiv.innerHTML = '<p>لا يوجد قنوات في الملف أو الملف غير صالح.</p>';
+      return;
+    }
+
+    channels.forEach((ch, idx) => {
+      const btn = document.createElement('button');
+      btn.textContent = ch.title;
+      btn.title = ch.url;
+      btn.onclick = () => {
+        player.src = ch.url;
+        player.play().catch(() => alert('تعذّر تشغيل هذه القناة'));
+      };
+      channelsDiv.appendChild(btn);
+    });
+  }
+</script>
+
+</body>
+</html>
